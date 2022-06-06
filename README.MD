@@ -4,6 +4,10 @@ Telegram bot (hosted by AWS Lambda) that respond with [How Long To Beat](https:/
 
 [@htlb_assistant_bot](https://t.me/hltb_assistant_bot)
 
+Here how typical response would look like: 
+
+![Example](./readme/example.png)
+
 ## Build
 
 ### Using Docker
