@@ -15,8 +15,7 @@ serde = "1"
 serde_json = "^1"
 simple_logger = "2.1.0"
 #frankenstein = { version = "0.15.1" }
-frankenstein = { git = "https://github.com/ayrat555/frankenstein", branch = "ayrat555/stack-overflow-fix" }
-
+frankenstein = { git = "https://github.com/ayrat555/frankenstein", branch = "ayrat555/box-fields" }
 
 [target.x86_64-unknown-linux-musl.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }

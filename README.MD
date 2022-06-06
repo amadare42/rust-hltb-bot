@@ -42,7 +42,7 @@ Telegram bot (hosted by AWS Lambda) that respond with [How Long To Beat](https:/
 
 Define env variables:
 - `API_KEY` - bot token
-- `RUN_MODE` - "Polling" or "WebHook" (case-insensitive). Defaults to "WebHook"\
+- `RUN_MODE` - "Polling" or "WebHook" (case-insensitive). Defaults to "WebHook"
 - `LOG_LEVEL` - https://docs.rs/log/latest/log/enum.LevelFilter.html#variants
 - `ENTRIES_LIMIT` - how many entries to show (max). Defaults to 5
 

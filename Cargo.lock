@@ -279,13 +279,12 @@ dependencies = [
 [[package]]
 name = "frankenstein"
 version = "0.15.1"
-source = "git+https://github.com/ayrat555/frankenstein?branch=ayrat555/stack-overflow-fix#ffd68e388b19bacb8d308f137c4889a8aa5f2fb7"
+source = "git+https://github.com/ayrat555/frankenstein?branch=ayrat555/box-fields#9e33baa4166941841c874bbabda8e0d8c2d43439"
 dependencies = [
  "mime_guess",
  "multipart",
  "serde",
  "serde_json",
- "serde_stacker",
  "thiserror",
  "typed-builder",
  "ureq",
@@ -1103,15 +1102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "psm"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "871372391786ccec00d3c5d3d6608905b3d4db263639cfe075d3b60a736d115a"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1420,16 +1410,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_stacker"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "142e02b5fb4b5602a71c7f0e96120e4371abb3f0c0639511b829c3537f498c12"
-dependencies = [
- "serde",
- "stacker",
-]
-
-[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1503,19 +1483,6 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
-name = "stacker"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90939d5171a4420b3ff5fbc8954d641e7377335454c259dcb80786f3f21dc9b4"
-dependencies = [
- "cc",
- "cfg-if",
- "libc",
- "psm",
- "winapi",
-]
 
 [[package]]
 name = "string_cache"

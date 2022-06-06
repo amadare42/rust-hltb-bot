@@ -4,8 +4,7 @@ use std::env;
 use crate::page_parsing::*;
 use crate::formatting::*;
 
-use frankenstein::{AllowedUpdate, Api, DeleteWebhookParams, EditMessageResponse, EditMessageTextParams, GetUpdatesParams, Message, MethodResponse, ParseMode, SendMessageParams, SetWebhookParams, Update, UpdateContent};
-use frankenstein::TelegramApi;
+use frankenstein::*;
 use serde_json::Value;
 
 pub async fn run_polling() -> Result<(), Box<dyn Error>> {
@@ -89,8 +88,7 @@ async fn respond(api: &Api, msg: Message) -> Result<Option<Message>, Box<dyn Err
         None => return Ok(None),
         Some(text) => text
     };
-    let page = fetch_search_page(&query).await?;
-    let entries = parse_entries_from_page(&page);
+    let entries = fetch_entries(&query).await?;
     let initial_msg_text = format_msg_initial(&entries);
 
     let full_entries_future = fetch_full_entries(entries);
@@ -99,7 +97,7 @@ async fn respond(api: &Api, msg: Message) -> Result<Option<Message>, Box<dyn Err
         .chat_id(i64::clone(&msg.chat.id))
         .reply_to_message_id(msg.message_id)
         .text(&initial_msg_text)
-        .parse_mode(ParseMode::Markdown)
+        .parse_mode(#[allow(deprecated)] ParseMode::Markdown)
         .build();
     log::debug!("-- sending initial message\n{}\n--", initial_msg_text);
     let initial_msg_rsp = api.send_message(&initial_msg)?;
@@ -116,7 +114,7 @@ async fn respond(api: &Api, msg: Message) -> Result<Option<Message>, Box<dyn Err
         .chat_id(i64::clone(&msg.chat.id))
         .message_id(initial_msg_rsp.result.message_id)
         .text(&updated_text)
-        .parse_mode(ParseMode::Markdown)
+        .parse_mode(#[allow(deprecated)] ParseMode::Markdown)
         .build();
     log::debug!("-- sending edited message\n{}\n--", updated_text);
     let msg = api.edit_message_text(&updated_msg)?;
