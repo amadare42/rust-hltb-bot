@@ -5,7 +5,7 @@ use crate::model::RunMode;
 
 mod model;
 mod formatting;
-mod page_parsing;
+mod api_client;
 mod telegram;
 
 mod tests;

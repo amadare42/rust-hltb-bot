@@ -5,20 +5,23 @@ edition = "2018"
 autobins = false
 
 [dependencies]
-reqwest = { version = "0.11.10", features = ["json" ] }
+reqwest = { version = "0.11.10", features = ["json"] }
 tokio = { version = "1.*", features = ["macros"] }
 futures = "0.3.21"
-scraper = '0.13.0'
 lambda_runtime = "0.5.1"
 log = "0.4.17"
-serde = "1"
+serde = "^1"
 serde_json = "^1"
 simple_logger = "2.1.0"
-#frankenstein = { version = "0.15.1" }
-frankenstein = { git = "https://github.com/ayrat555/frankenstein", branch = "ayrat555/box-fields" }
+frankenstein = { version = "0.20.0" }
 
 [target.x86_64-unknown-linux-musl.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
 
 [[bin]]
 name = "bootstrap"

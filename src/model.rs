@@ -1,45 +1,39 @@
 use std::str::FromStr;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+/// model for entry returned from HLTB API
+pub struct RawEntry {
+    pub game_image: String,
+    pub game_name: String,
+    /// Main + Extra
+    pub comp_plus: i32,
+    /// Main Story
+    pub comp_main: i32,
+    /// Completionist
+    pub comp_100: i32,
+    pub game_id: i64,
+    pub profile_steam: i64
+}
 
 #[derive(Debug)]
-pub struct GamePageData {
-    pub steam: String
-}
-impl GamePageData {
-    pub fn new(steam: String) -> Self {
-        GamePageData {
-            steam
-        }
-    }
-}
-
-#[derive(Debug)]
+/// model for mapped entry
 pub struct Entry {
     pub name: String,
     pub link: String,
     pub img: String,
-    pub descr: String
+    pub descr: String,
+    pub steam: Option<String>
 }
+
 impl Entry {
-    pub fn new(name: String, link: String, img: String, descr: String) -> Entry {
+    pub fn new(name: String, link: String, img: String, descr: String, steam: Option<String>) -> Entry {
         Entry {
             name,
             img,
             link,
-            descr
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct FullEntry {
-    pub entry: Entry,
-    pub page_data: Option<GamePageData>
-}
-impl FullEntry {
-    pub fn new(entry: Entry, page_data: Option<GamePageData>) -> FullEntry {
-        FullEntry {
-            entry,
-            page_data
+            descr,
+            steam
         }
     }
 }

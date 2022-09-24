@@ -1,6 +1,6 @@
 use crate::model::*;
 
-pub fn format_msg_initial(entries: &Vec<Entry>) -> String {
+pub fn format_msg(entries: &Vec<Entry>) -> String {
     if entries.len() == 0 {
         return "not found".to_string();
     }
@@ -8,30 +8,19 @@ pub fn format_msg_initial(entries: &Vec<Entry>) -> String {
     let mut str = String::new();
     try_add_preview_img(&mut str, &entries);
     for entry in entries {
-        str.push_str(&format!("*{}* [🗗]({}) [ ](_{}_)\n{}\n",
-            clean_md(&entry.name), entry.link, entry.link, clean_md(&entry.descr)
-        ))
+        // title & HLTB link
+        str.push_str(&format!("*{}* [🗗]({})", clean_md(&entry.name), entry.link));
+
+        // steam link if present
+        if let Some(steam) = &entry.steam {
+            str.push_str(&format!(" [🗗Steam]({})", steam))
+        }
+
+        // times & new lines
+        str.push_str(&format!("\n{}\n",clean_md(&entry.descr)))
     }
 
     str
-}
-
-pub fn populate_page_data(msg: &str, full_entries: &Vec<FullEntry>) -> String {
-    let mut msg = String::from(msg);
-
-    for full_entry in full_entries {
-        let tmp = &format!(" [ ](_{}_)", full_entry.entry.link);
-
-        msg = match &full_entry.page_data {
-            None =>
-                msg.replace(tmp, ""),
-
-            Some(page_data) =>
-                msg.replace(tmp, &format!(" [🗗Steam]({})", page_data.steam))
-        }
-    }
-
-    msg
 }
 
 

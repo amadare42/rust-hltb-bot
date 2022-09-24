@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::env;
 
-use crate::page_parsing::*;
+use crate::api_client::*;
 use crate::formatting::*;
 
 use frankenstein::*;
@@ -89,38 +89,16 @@ async fn respond(api: &Api, msg: Message) -> Result<Option<Message>, Box<dyn Err
         Some(text) => text
     };
     let entries = fetch_entries(&query).await?;
-    let initial_msg_text = format_msg_initial(&entries);
-
-    let full_entries_future = fetch_full_entries(entries);
+    let msg_text = format_msg(&entries);
 
     let initial_msg = SendMessageParams::builder()
         .chat_id(i64::clone(&msg.chat.id))
         .reply_to_message_id(msg.message_id)
-        .text(&initial_msg_text)
+        .text(&msg_text)
         .parse_mode(#[allow(deprecated)] ParseMode::Markdown)
         .build();
-    log::debug!("-- sending initial message\n{}\n--", initial_msg_text);
-    let initial_msg_rsp = api.send_message(&initial_msg)?;
+    log::debug!("-- sending message\n{}\n--", msg_text);
+    let msg_rsp = api.send_message(&initial_msg)?;
 
-    let full_entries = full_entries_future.await;
-    let updated_text = populate_page_data(&initial_msg_text, &full_entries);
-
-    if updated_text == initial_msg_text {
-        log::debug!("not updated: {}", updated_text);
-        return Ok(Some(initial_msg_rsp.result));
-    }
-
-    let updated_msg = EditMessageTextParams::builder()
-        .chat_id(i64::clone(&msg.chat.id))
-        .message_id(initial_msg_rsp.result.message_id)
-        .text(&updated_text)
-        .parse_mode(#[allow(deprecated)] ParseMode::Markdown)
-        .build();
-    log::debug!("-- sending edited message\n{}\n--", updated_text);
-    let msg = api.edit_message_text(&updated_msg)?;
-
-    match msg {
-        EditMessageResponse::Message(msg) => Ok(Some(msg.result)),
-        EditMessageResponse::Bool(_) => Ok(None)
-    }
+    Ok(Some(msg_rsp.result))
 }
