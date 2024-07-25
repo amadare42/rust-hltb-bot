@@ -4,6 +4,7 @@ mod tests {
 
     use crate::api_client::*;
     use crate::formatting::*;
+    use std::fs;
 
     #[tokio::test]
     async fn format_from_local() -> Result<(), Box<dyn Error>> {

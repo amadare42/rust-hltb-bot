@@ -3,7 +3,7 @@ use crate::model::*;
 use std::error::Error;
 use std::str::FromStr;
 use std::usize;
-use reqwest::{ Client, header };
+use reqwest::{Client, header};
 use reqwest::header::{CONTENT_TYPE};
 use serde_json::{json, Value};
 
@@ -43,7 +43,7 @@ fn map_entry(raw: RawEntry) -> Entry {
         link,
         img,
         descr,
-        steam
+        steam,
     )
 }
 
@@ -64,8 +64,7 @@ fn map_hours(sec: i32) -> String {
 
     if integral < 1.0 {
         format!("--")
-    }
-    else if fraction > 0.5 {
+    } else if fraction > 0.5 {
         format!("{}½ Hours", integral)
     } else {
         format!("{} Hours", integral)
@@ -74,36 +73,28 @@ fn map_hours(sec: i32) -> String {
 
 /// queries HLTB API
 pub async fn query_games(query: &str) -> Result<Value, Box<dyn Error>> {
+    let parts = query.split_whitespace().collect::<Vec<&str>>();
     let body = json!({
       "searchType": "games",
-      "searchTerms": [ query ],
+      "searchTerms": parts,
       "searchPage": 1,
       "size": 20,
       "searchOptions": {
+        "filter": "",
         "games": {
           "userId": 0,
           "platform": "",
           "sortCategory": "popular",
           "rangeCategory": "main",
-          "rangeTime": { "min": 0, "max": 0 },
-          "gameplay": {
-            "perspective": "",
-            "flow": "",
-            "genre": ""
-          },
-          "modifier": ""
-        },
-        "users": {
-          "sortCategory": "postcount"
+          "rangeTime": { "min": null, "max": null }
         },
         "filter": "",
-        "sort": 0,
-        "randomizer": 0
-      }
+      },
+      "useCache": true
     }).to_string();
 
     let rq_future = build_client()
-        .post("https://howlongtobeat.com/api/search")
+        .post("https://howlongtobeat.com/api/find")
         .header(CONTENT_TYPE, "application/json")
         .body(body)
         .send();
