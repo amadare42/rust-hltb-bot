@@ -94,7 +94,7 @@ pub async fn query_games(query: &str) -> Result<Value, Box<dyn Error>> {
     }).to_string();
 
     let rq_future = build_client()
-        .post("https://howlongtobeat.com/api/find")
+        .post("https://howlongtobeat.com/api/search")
         .header(CONTENT_TYPE, "application/json")
         .body(body)
         .send();
