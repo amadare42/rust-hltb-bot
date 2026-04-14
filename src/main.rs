@@ -1,7 +1,9 @@
 use std::str::FromStr;
+use std::sync::{Arc, OnceLock, Mutex};
 use log::{LevelFilter};
 use simple_logger::SimpleLogger;
 use crate::model::RunMode;
+use crate::telegram::TelegramBot;
 
 mod model;
 mod formatting;
@@ -10,6 +12,13 @@ mod telegram;
 
 mod tests;
 mod lambda;
+
+static TELEGRAM_BOT: OnceLock<Arc<Mutex<TelegramBot>>> = OnceLock::new();
+pub fn get_bot() -> Arc<Mutex<TelegramBot>> {
+    TELEGRAM_BOT
+        .get_or_init(|| Arc::new(Mutex::new(TelegramBot::new())))
+        .clone()
+}
 
 #[tokio::main]
 async fn main() {
@@ -24,7 +33,7 @@ async fn main() {
     log::info!("Running in {:?} mode", run_mode);
 
     match run_mode {
-        RunMode::Polling => telegram::run_polling().await.unwrap(),
+        RunMode::Polling => get_bot().lock().unwrap().run_polling().await.unwrap(),
         RunMode::WebHook => lambda::run().await.unwrap(),
     }
 }

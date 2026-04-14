@@ -1,5 +1,5 @@
-use std::error::Error;
 use std::env;
+use std::error::Error;
 
 use crate::api_client::*;
 use crate::formatting::*;
@@ -7,17 +7,117 @@ use crate::formatting::*;
 use frankenstein::*;
 use serde_json::Value;
 
-pub async fn run_polling() -> Result<(), Box<dyn Error>> {
-    poll(&create_api()).await;
-
-    return Ok(())
+pub struct TelegramBot {
+    tg_api: Api,
+    hltb_api: HltbApiClient,
 }
 
-pub async fn handle_msg_from_value(value: Value) -> Option<Message> {
-    let update_content: Update = serde_json::from_value(value).unwrap();
-    let api = create_api();
-    let rsp = handle_update(&api, update_content).await;
-    rsp
+impl TelegramBot {
+    pub fn new() -> Self {
+        let tg_api = create_api();
+        let hltb_api = HltbApiClient::new();
+        Self { tg_api, hltb_api }
+    }
+
+    pub async fn run_polling(&mut self) -> Result<(), Box<dyn Error>> {
+        self.poll().await;
+        Ok(())
+    }
+
+    async fn poll(&mut self) {
+        log::info!("Running polling");
+        let mut update_id: u32 = 0;
+        loop {
+            log::debug!("update_id: {}", update_id);
+            let update_params = GetUpdatesParams::builder()
+                .allowed_updates(vec![AllowedUpdate::Message, AllowedUpdate::EditedMessage])
+                .offset(u32::clone(&update_id))
+                .build();
+            let update_rsp = self.tg_api.get_updates(&update_params);
+
+            match update_rsp {
+                Ok(rsp) => {
+                    for update in rsp.result {
+                        update_id = update.update_id + 1;
+                        self.handle_update(update).await;
+                    }
+                }
+                Err(err) => {
+                    log::error!("{:?}", err)
+                }
+            }
+        }
+    }
+
+    async fn handle_update(&mut self, update: Update) -> Option<Message> {
+        if let UpdateContent::Message(message) = update.content {
+            return self.respond(message).await.unwrap();
+        }
+
+        if let UpdateContent::EditedMessage(message) = update.content {
+            return self.respond(message).await.unwrap();
+        }
+
+        None
+    }
+
+    async fn respond(&mut self, msg: Message) -> Result<Option<Message>, Box<dyn Error>> {
+        let query = match msg.text {
+            None => return Ok(None),
+            Some(text) => text,
+        };
+        let entries = &self.hltb_api.fetch_entries(&query).await?;
+        let msg_text = format_msg(&entries);
+
+        let initial_msg = SendMessageParams::builder()
+            .chat_id(i64::clone(&msg.chat.id))
+            .reply_to_message_id(msg.message_id)
+            .text(&msg_text)
+            .parse_mode(
+                #[allow(deprecated)]
+                ParseMode::Markdown,
+            )
+            .build();
+        log::debug!("-- sending message\n{}\n--", msg_text);
+        let msg_rsp = self.tg_api.send_message(&initial_msg)?;
+
+        // Resolve steam URLs concurrently and keep them keyed by HLTB id.
+        let urls_by_hltb_id = self.hltb_api.fetch_steam_urls_for_entries(entries).await?;
+
+        let mut updated_msg_text = msg_text.clone();
+        entries.iter().for_each(|entry| {
+            let placeholder = get_placeholder(entry.hltb_id);
+
+            if let Some(Some(url)) = urls_by_hltb_id.get(&entry.hltb_id) {
+                let replacement = format!(" [🔗Steam]({})", url);
+                updated_msg_text = updated_msg_text.replace(&placeholder, &replacement);
+            } else {
+                updated_msg_text = updated_msg_text.replace(&placeholder, "");
+            }
+        });
+
+        let updated_msg = EditMessageTextParams::builder()
+            .chat_id(i64::clone(&msg.chat.id))
+            .message_id(msg_rsp.result.message_id)
+            .text(&updated_msg_text)
+            .parse_mode(
+                #[allow(deprecated)]
+                ParseMode::Markdown,
+            )
+            .build();
+
+        log::debug!("-- sending updated message\n{}\n--", updated_msg_text);
+
+        self.tg_api.edit_message_text(&updated_msg)?;
+
+        Ok(Some(msg_rsp.result))
+    }
+
+    pub async fn handle_msg_from_value(&mut self, value: Value) -> Option<Message> {
+        let update_content: Update = serde_json::from_value(value).unwrap();
+        let rsp = self.handle_update(update_content).await;
+        rsp
+    }
 }
 
 pub fn register_webhook(url: &str) -> Result<MethodResponse<bool>, frankenstein::api::Error> {
@@ -39,66 +139,7 @@ pub fn unregister_webhook() -> Result<MethodResponse<bool>, frankenstein::api::E
     Ok(rsp)
 }
 
-
 fn create_api() -> Api {
-    let key = env::var("API_KEY")
-        .expect("API_KEY is missing in env variables.");
+    let key = env::var("API_KEY").expect("API_KEY is missing in env variables.");
     Api::new(&key)
-}
-
-async fn poll(api: &Api) {
-    log::info!("Running polling");
-    let mut update_id: u32 = 0;
-    loop {
-        log::debug!("update_id: {}", update_id);
-        let update_params = GetUpdatesParams::builder()
-            .allowed_updates(vec![AllowedUpdate::Message, AllowedUpdate::EditedMessage])
-            .offset(u32::clone(&update_id))
-            .build();
-        let update_rsp = api.get_updates(&update_params);
-
-        match update_rsp {
-            Ok(rsp) => {
-                for update in rsp.result {
-                    update_id = update.update_id + 1;
-                    handle_update(&api, update).await;
-                }
-            }
-            Err(err) => {
-                log::error!("{:?}", err)
-            }
-        }
-    }
-}
-
-async fn handle_update(api: &Api, update: Update) -> Option<Message> {
-    if let UpdateContent::Message(message) = update.content {
-        return respond(&api, message).await.unwrap();
-    }
-
-    if let UpdateContent::EditedMessage(message) = update.content {
-        return respond(&api, message).await.unwrap();
-    }
-
-    None
-}
-
-async fn respond(api: &Api, msg: Message) -> Result<Option<Message>, Box<dyn Error>> {
-    let query = match msg.text {
-        None => return Ok(None),
-        Some(text) => text
-    };
-    let entries = fetch_entries(&query).await?;
-    let msg_text = format_msg(&entries);
-
-    let initial_msg = SendMessageParams::builder()
-        .chat_id(i64::clone(&msg.chat.id))
-        .reply_to_message_id(msg.message_id)
-        .text(&msg_text)
-        .parse_mode(#[allow(deprecated)] ParseMode::Markdown)
-        .build();
-    log::debug!("-- sending message\n{}\n--", msg_text);
-    let msg_rsp = api.send_message(&initial_msg)?;
-
-    Ok(Some(msg_rsp.result))
 }

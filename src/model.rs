@@ -13,7 +13,6 @@ pub struct RawEntry {
     /// Completionist
     pub comp_100: i32,
     pub game_id: i64,
-    pub profile_steam: i64
 }
 
 #[derive(Debug)]
@@ -23,17 +22,17 @@ pub struct Entry {
     pub link: String,
     pub img: String,
     pub descr: String,
-    pub steam: Option<String>
+    pub hltb_id: i64
 }
 
 impl Entry {
-    pub fn new(name: String, link: String, img: String, descr: String, steam: Option<String>) -> Entry {
+    pub fn new(name: String, link: String, img: String, descr: String, hltb_id: i64) -> Entry {
         Entry {
             name,
             img,
             link,
             descr,
-            steam
+            hltb_id
         }
     }
 }

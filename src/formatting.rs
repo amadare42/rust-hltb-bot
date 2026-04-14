@@ -1,5 +1,9 @@
 use crate::model::*;
 
+pub fn get_placeholder(hltb_id: i64) -> String {
+    format!(" [ ](_{}_)", hltb_id)
+}
+
 pub fn format_msg(entries: &Vec<Entry>) -> String {
     if entries.len() == 0 {
         return "not found".to_string();
@@ -9,12 +13,10 @@ pub fn format_msg(entries: &Vec<Entry>) -> String {
     try_add_preview_img(&mut str, &entries);
     for entry in entries {
         // title & HLTB link
-        str.push_str(&format!("*{}* [🗗]({})", clean_md(&entry.name), entry.link));
+        str.push_str(&format!("*{}* [🔗]({})", clean_md(&entry.name), entry.link));
 
-        // steam link if present
-        if let Some(steam) = &entry.steam {
-            str.push_str(&format!(" [🗗Steam]({})", steam))
-        }
+        // steam link placeholder
+        str.push_str(&get_placeholder(entry.hltb_id));
 
         // times & new lines
         str.push_str(&format!("\n{}\n",clean_md(&entry.descr)))

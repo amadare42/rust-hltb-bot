@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use lambda_runtime::{service_fn, LambdaEvent, Error};
 use serde_json::{Value};
-use crate::telegram;
+use crate::{telegram, get_bot};
 
 pub async fn run() -> Result<(), Error> {
     let func = service_fn(handle);
@@ -38,7 +38,10 @@ pub async fn handle_rq(value: Value) -> String {
         },
         Some(msg_type) => format!("Unknown message type: {}", msg_type),
         _ => {
-            let rsp = telegram::handle_msg_from_value(value).await;
+            let rsp = get_bot()
+                .lock()
+                .unwrap()
+                .handle_msg_from_value(value).await;
             log::info!("{:?}", rsp);
             to_str(&rsp)
         }
