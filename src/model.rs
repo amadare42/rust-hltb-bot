@@ -40,7 +40,8 @@ impl Entry {
 #[derive(Debug)]
 pub enum RunMode {
     Polling,
-    WebHook
+    WebHook,
+    Cli
 }
 #[derive(Debug)]
 pub struct EnumParseError(String);
@@ -52,6 +53,7 @@ impl FromStr for RunMode {
         match s.to_ascii_lowercase().as_ref() {
             "polling" => Ok(RunMode::Polling),
             "webhook" => Ok(RunMode::WebHook),
+            "cli" => Ok(RunMode::Cli),
             _ => Err(EnumParseError(format!("Unknown RunMode {}", s)))
         }
     }

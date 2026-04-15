@@ -1,3 +1,5 @@
 /target
 .idea
-rust.zip
+/dist/
+/.lambda_function_name
+.env

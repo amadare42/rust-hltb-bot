@@ -1,3 +1,8 @@
-#!/bin/bash
-/usr/local/cargo/bin/cargo build --release --target x86_64-unknown-linux-musl
-zip -j rust.zip ./target/x86_64-unknown-linux-musl/release/bootstrap
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+cd "${SCRIPT_DIR}"
+mkdir -p ./dist
+docker compose run --build --rm build

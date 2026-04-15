@@ -13,10 +13,15 @@ Here how typical response would look like:
 ### Using Docker
 
 1. Prerequisite: Docker
-2. Run docker compose
+2. Run the build script
 ```
-   docker compose up --build build
+   ./build.sh
 ```
+   This build is pinned to `linux/amd64` in `docker-compose.yaml` so it can produce `x86_64-unknown-linux-musl` Lambda binaries from Apple Silicon hosts.
+
+3. The Lambda deployment artifact will be written to `./dist/rust_hltb_bot.zip`.
+
+4. (Optional) Build for a different Lambda architecture by overriding `TARGET_TRIPLE` in `docker-compose.yaml` and `docker/build.sh`.
 
 ### Locally
 1. Prerequisite: Linux
@@ -39,8 +44,41 @@ Here how typical response would look like:
    ```
 7. Build
    ```
-   sh build.sh
+   TARGET_TRIPLE=x86_64-unknown-linux-musl bash ./docker/build.sh
    ```
+
+The Lambda deployment artifact will be written to `./dist/rust_hltb_bot.zip`.
+
+## Deploy
+
+Prerequisite: configured AWS CLI credentials with permission to update the target Lambda function.
+
+Deploy the latest local artifact directly to Lambda:
+
+```
+./deploy.sh <lambda-function-name>
+```
+
+The first successful run stores the function name in `./.lambda_function_name`, so later runs can simply use:
+
+```
+./deploy.sh
+```
+
+You can also provide the function name via `FUNCTION_NAME`:
+
+```
+FUNCTION_NAME=<lambda-function-name> ./deploy.sh
+```
+
+You can also provide the function name via environment variable:
+
+```
+LAMBDA_FUNCTION_NAME=<lambda-function-name> ./deploy.sh
+```
+
+If your artifact is stored somewhere else, override `ARTIFACT_PATH` when running `deploy.sh`.
+If you want to store the remembered function name somewhere else, override `FUNCTION_NAME_FILE`.
 
 ## Run
 

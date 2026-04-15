@@ -1,14 +1,19 @@
-version: "3.9"
 services:
   build:
-    build: .
+    build:
+      context: .
+      args:
+        TARGET_TRIPLE: x86_64-unknown-linux-musl
+    platform: linux/amd64
+    environment:
+      TARGET_TRIPLE: x86_64-unknown-linux-musl
     volumes:
       - .:/hltb
       - cargo:/root/.cargo/registry
     working_dir: /hltb
     command:
       - /bin/bash
-      - --login
-      - ./build.sh
+      - -c
+      - bash ./docker/build.sh
 volumes:
   cargo:

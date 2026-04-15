@@ -6,6 +6,7 @@ use crate::formatting::*;
 
 use frankenstein::*;
 use serde_json::Value;
+use crate::retrieval_flow::RetrievalFlow;
 
 pub struct TelegramBot {
     tg_api: Api,
@@ -66,13 +67,13 @@ impl TelegramBot {
             None => return Ok(None),
             Some(text) => text,
         };
-        let entries = &self.hltb_api.fetch_entries(&query).await?;
-        let msg_text = format_msg(&entries);
+        let mut flow = RetrievalFlow::new(&mut self.hltb_api, &query);
 
+        let msg_text = &flow.get_initial_msg().await?;
         let initial_msg = SendMessageParams::builder()
             .chat_id(i64::clone(&msg.chat.id))
             .reply_to_message_id(msg.message_id)
-            .text(&msg_text)
+            .text(msg_text)
             .parse_mode(
                 #[allow(deprecated)]
                 ParseMode::Markdown,
@@ -82,32 +83,18 @@ impl TelegramBot {
         let msg_rsp = self.tg_api.send_message(&initial_msg)?;
 
         // Resolve steam URLs concurrently and keep them keyed by HLTB id.
-        let urls_by_hltb_id = self.hltb_api.fetch_steam_urls_for_entries(entries).await?;
-
-        let mut updated_msg_text = msg_text.clone();
-        entries.iter().for_each(|entry| {
-            let placeholder = get_placeholder(entry.hltb_id);
-
-            if let Some(Some(url)) = urls_by_hltb_id.get(&entry.hltb_id) {
-                let replacement = format!(" [🔗Steam]({})", url);
-                updated_msg_text = updated_msg_text.replace(&placeholder, &replacement);
-            } else {
-                updated_msg_text = updated_msg_text.replace(&placeholder, "");
-            }
-        });
+        let msg_text = flow.get_final_msg().await?;
 
         let updated_msg = EditMessageTextParams::builder()
             .chat_id(i64::clone(&msg.chat.id))
             .message_id(msg_rsp.result.message_id)
-            .text(&updated_msg_text)
+            .text(&msg_text)
             .parse_mode(
                 #[allow(deprecated)]
                 ParseMode::Markdown,
             )
             .build();
-
-        log::debug!("-- sending updated message\n{}\n--", updated_msg_text);
-
+        log::debug!("-- sending updated message\n{}\n--", &msg_text);
         self.tg_api.edit_message_text(&updated_msg)?;
 
         Ok(Some(msg_rsp.result))
@@ -120,7 +107,7 @@ impl TelegramBot {
     }
 }
 
-pub fn register_webhook(url: &str) -> Result<MethodResponse<bool>, frankenstein::api::Error> {
+pub fn register_webhook(url: &str) -> Result<MethodResponse<bool>, api::Error> {
     let params = SetWebhookParams::builder()
         .url(url)
         .allowed_updates(vec![AllowedUpdate::Message, AllowedUpdate::EditedMessage])
@@ -131,7 +118,7 @@ pub fn register_webhook(url: &str) -> Result<MethodResponse<bool>, frankenstein:
     Ok(rsp)
 }
 
-pub fn unregister_webhook() -> Result<MethodResponse<bool>, frankenstein::api::Error> {
+pub fn unregister_webhook() -> Result<MethodResponse<bool>, api::Error> {
     let params = DeleteWebhookParams::builder().build();
 
     let rsp = create_api().delete_webhook(&params)?;

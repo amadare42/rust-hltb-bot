@@ -12,6 +12,8 @@ mod telegram;
 
 mod tests;
 mod lambda;
+mod retrieval_flow;
+mod cli;
 
 static TELEGRAM_BOT: OnceLock<Arc<Mutex<TelegramBot>>> = OnceLock::new();
 pub fn get_bot() -> Arc<Mutex<TelegramBot>> {
@@ -35,6 +37,7 @@ async fn main() {
     match run_mode {
         RunMode::Polling => get_bot().lock().unwrap().run_polling().await.unwrap(),
         RunMode::WebHook => lambda::run().await.unwrap(),
+        RunMode::Cli => cli::run_cli().await
     }
 }
 
