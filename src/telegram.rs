@@ -16,7 +16,7 @@ pub struct TelegramBot {
 impl TelegramBot {
     pub fn new() -> Self {
         let tg_api = create_api();
-        let hltb_api = HltbApiClient::new();
+        let hltb_api = HltbApiClient::new_from_env();
         Self { tg_api, hltb_api }
     }
 

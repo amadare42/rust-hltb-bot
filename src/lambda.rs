@@ -61,7 +61,7 @@ pub async fn handle_rq(value: Value) -> String {
 
 
 async fn get_query_result(query: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let mut api = HltbApiClient::new();
+    let mut api = HltbApiClient::new_from_env();
     let mut flow = RetrievalFlow::new(&mut api, query);
     let start = Instant::now();
     let initial_msg = &flow.get_initial_msg().await?;

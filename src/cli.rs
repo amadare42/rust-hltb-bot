@@ -4,7 +4,7 @@ use std::io;
 use std::io::{stdout, Write};
 
 pub async fn run_cli() {
-    let mut hltb_api = HltbApiClient::new();
+    let mut hltb_api = HltbApiClient::new_from_env();
 
     loop {
         println!("Enter query: ");

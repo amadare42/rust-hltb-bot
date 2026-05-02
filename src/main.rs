@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::sync::{Arc, OnceLock, Mutex};
+use dotenvy::dotenv;
 use log::{LevelFilter};
 use simple_logger::SimpleLogger;
 use crate::model::RunMode;
@@ -24,8 +25,9 @@ pub fn get_bot() -> Arc<Mutex<TelegramBot>> {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     configure_logging();
-
+    
     let run_mode = std::env::var("RUN_MODE")
         .map_or_else(|_| {
             log::warn!("RUN_MODE missing or invalid");
