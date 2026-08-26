@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
+use std::time::Duration;
 use std::usize;
 
 pub struct HltbApiClientConfig {
@@ -32,9 +33,12 @@ impl HltbApiClient {
     }
 
     pub fn new_from_env() -> Self {
-        let init_url = std::env::var("HLTB_INIT_URL").unwrap();
-        let find_url = std::env::var("HLTB_FIND_URL").unwrap();
-        let domain = std::env::var("HLTB_DOMAIN_URL").unwrap();
+        let domain = std::env::var("HLTB_DOMAIN_URL")
+            .unwrap_or_else(|_| "https://howlongtobeat.com".to_string());
+        let init_url = std::env::var("HLTB_INIT_URL")
+            .unwrap_or_else(|_| format!("{}/api/search/site/init", domain));
+        let find_url = std::env::var("HLTB_FIND_URL")
+            .unwrap_or_else(|_| format!("{}/api/search/site", domain));
 
         Self::new(HltbApiClientConfig {
             init_url,
@@ -58,18 +62,11 @@ impl HltbApiClient {
     ) -> Result<HashMap<i64, Option<String>>, Box<dyn Error>> {
         self.ensure_auth().await?;
 
-        use std::sync::{Arc, Mutex};
-        let self_arc = Arc::new(Mutex::new(self));
-
+        let client = &*self;
         let requests = entries.iter().map(|entry| {
             let hltb_id = entry.hltb_id;
-            let self_clone = Arc::clone(&self_arc);
             async move {
-                let url = self_clone
-                    .lock()
-                    .unwrap()
-                    .fetch_steam_url_for_id(hltb_id)
-                    .await;
+                let url = client.fetch_steam_url_for_id(hltb_id).await;
                 (hltb_id, url)
             }
         });
@@ -91,7 +88,7 @@ impl HltbApiClient {
     }
 
     async fn fetch_steam_url_for_id(
-        &mut self,
+        &self,
         hltb_id: i64,
     ) -> Result<Option<String>, Box<dyn Error>> {
         let url = format!("{}/game/{}", self.cfg.domain, hltb_id);
@@ -124,8 +121,11 @@ impl HltbApiClient {
         match self.query_games(query).await {
             Ok(rsp) => parse_entries_from_rsp(rsp, &self.cfg.domain),
             Err(err) => {
-                // HLTB sometimes returns a 404 page for stale/invalid auth tokens.
-                if err.to_string().contains("status 404") {
+                // HLTB invalidates search tokens periodically. Refresh once on
+                // authorization failure rather than retrying indefinitely.
+                if err.to_string().contains("status 401")
+                    || err.to_string().contains("status 403")
+                {
                     self.perform_auth().await?;
                     let rsp = self.query_games(query).await?;
                     return parse_entries_from_rsp(rsp, &self.cfg.domain);
@@ -195,8 +195,19 @@ impl HltbApiClient {
             .send()
             .await?;
 
+        let status = rsp.status();
         let text = rsp.text().await?;
-        let json = serde_json::from_str(&text)?;
+        if !status.is_success() {
+            return Err(format!(
+                "HLTB search failed with status {}: {}",
+                status, text
+            )
+            .into());
+        }
+
+        let json = serde_json::from_str(&text).map_err(|err| {
+            format!("HLTB search returned invalid JSON: {}: {}", err, text)
+        })?;
         Ok(json)
     }
 
@@ -217,13 +228,18 @@ impl HltbApiClient {
                 .as_millis()
         );
 
-        let rsp_future = self.client.get(url).send();
-
-        let rsp = rsp_future
-            .await?
-            .error_for_status()?
-            .json::<Value>()
-            .await?;
+        let rsp = self.client.get(url).send().await?;
+        let status = rsp.status();
+        let text = rsp.text().await?;
+        if !status.is_success() {
+            return Err(format!(
+                "HLTB auth init failed with status {}: {}",
+                status, text
+            )
+            .into());
+        }
+        let rsp: Value = serde_json::from_str(&text)
+            .map_err(|err| format!("HLTB auth init returned invalid JSON: {}: {}", err, text))?;
 
         if let Some(map) = rsp.as_object() {
             for (key, value) in map {
@@ -241,7 +257,7 @@ impl HltbApiClient {
         }
 
         if !self.has_required_auth_headers() {
-            return Err("HLTB auth init response did not include token/hpKey/hpVal".into());
+            return Err("HLTB auth init response did not include token".into());
         }
 
         Ok(self)
@@ -249,8 +265,6 @@ impl HltbApiClient {
 
     fn has_required_auth_headers(&self) -> bool {
         self.auth_headers.contains_key("x-auth-token")
-            && self.auth_headers.contains_key("x-hp-key")
-            && self.auth_headers.contains_key("x-hp-val")
     }
 
     fn upsert_auth_header(&mut self, header_key: &str, value: &str) -> Result<(), Box<dyn Error>> {
@@ -344,6 +358,8 @@ fn build_client(domain: &str) -> Client {
     Client::builder()
         .cookie_store(true)
         .default_headers(headers)
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(20))
         .build()
         .unwrap()
 }

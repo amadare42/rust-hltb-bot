@@ -87,6 +87,9 @@ Define env variables:
 - `RUN_MODE` - "Polling" or "WebHook" (case-insensitive). Defaults to "WebHook"
 - `LOG_LEVEL` - https://docs.rs/log/latest/log/enum.LevelFilter.html#variants
 - `ENTRIES_LIMIT` - how many entries to show (max). Defaults to 5
+- `HLTB_DOMAIN_URL` - HLTB site URL. Defaults to `https://howlongtobeat.com`
+- `HLTB_INIT_URL` - HLTB search bootstrap endpoint. Defaults to `https://howlongtobeat.com/api/search/site/init`
+- `HLTB_FIND_URL` - HLTB search endpoint. Defaults to `https://howlongtobeat.com/api/search/site`
 
 Bot can function both in long-polling and webhooks mechanism.
 To register it to use in  WebHook mode, you can call lambda with following JSON:

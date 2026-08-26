@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::future::Future;
 use std::time::Instant;
 use lambda_runtime::{service_fn, LambdaEvent, Error};
 use serde_json::{Value};
@@ -7,10 +6,45 @@ use crate::{telegram, get_bot};
 use crate::api_client::HltbApiClient;
 use crate::retrieval_flow::RetrievalFlow;
 
+pub(crate) fn should_use_aws_runtime() -> bool {
+    std::env::var("AWS_LAMBDA_RUNTIME_API").is_ok()
+        || std::env::var("AWS_EXECUTION_ENV").is_ok()
+}
+
 pub async fn run() -> Result<(), Error> {
+    if !should_use_aws_runtime() {
+        let payload = std::env::var("LOCAL_LAMBDA_EVENT")
+            .or_else(|_| std::env::var("LAMBDA_EVENT"))
+            .unwrap_or_else(|_| r#"{"lambda_rq_type":"query","query":"Skyrim"}"#.to_string());
+
+        let value: Value = serde_json::from_str(&payload)?;
+        let rsp = handle_rq(value).await;
+        println!("{}", rsp);
+        return Ok(());
+    }
+
     let func = service_fn(handle);
     lambda_runtime::run(func).await?;
     Ok(())
+}
+
+pub(crate) fn extract_query(value: &Value) -> Option<&str> {
+    if let Some(query) = value.get("query").and_then(Value::as_str) {
+        if !query.is_empty() && query != "$input.params().querystring.get('q')" {
+            return Some(query);
+        }
+    }
+
+    if let Some(query) = value
+        .get("queryStringParameters")
+        .and_then(Value::as_object)
+        .and_then(|params| params.get("q"))
+        .and_then(Value::as_str)
+    {
+        return Some(query);
+    }
+
+    value.get("q").and_then(Value::as_str)
 }
 
 pub async fn handle_rq(value: Value) -> String {
@@ -40,7 +74,7 @@ pub async fn handle_rq(value: Value) -> String {
                 to_str(&err)
             }
         },
-        Some("query") => match value["query"].as_str() {
+        Some("query") => match extract_query(&value) {
             None => "'query' property is missing".to_string(),
             Some(query) => get_query_result(query).await.unwrap_or_else(|err| {
                 log::error!("{:?}", &err);
@@ -64,10 +98,13 @@ async fn get_query_result(query: &str) -> Result<String, Box<dyn std::error::Err
     let mut api = HltbApiClient::new_from_env();
     let mut flow = RetrievalFlow::new(&mut api, query);
     let start = Instant::now();
+    log::info!("Starting HLTB search for query {:?}", query);
     let initial_msg = &flow.get_initial_msg().await?;
     let initial_duration = start.elapsed();
+    log::info!("HLTB search completed in {}ms", initial_duration.as_millis());
     let final_msg = &flow.get_final_msg().await?;
     let duration = start.elapsed();
+    log::info!("HLTB Steam-link enrichment completed in {}ms", duration.as_millis());
 
     let page = format!(r#"
 <html>
@@ -109,6 +146,7 @@ mod test {
     use crate::lambda::*;
 
     #[tokio::test]
+     #[ignore = "requires WEBHOOK_URL and Telegram credentials"]
     async fn test_register_webhook() {
         let url = std::env::var("WEBHOOK_URL")
             .expect("WEBHOOK_URL env parameter should be set!");
@@ -123,6 +161,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore = "requires WEBHOOK_URL and Telegram credentials"]
     async fn test_unregister_webhook() {
         std::env::var("WEBHOOK_URL")
             .expect("WEBHOOK_URL env parameter should be set!");
